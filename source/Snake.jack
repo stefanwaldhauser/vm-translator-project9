@@ -1,0 +1,98 @@
+class Snake {
+    field Array x_pos_block;          // Array of x positions for each segment
+    field Array y_pos_block;          // Array of y positions for each segment
+    field int length;           // Current length of snake
+    field int max_length;       // Maximum possible length
+
+    constructor Snake new(int start_x, int start_y) {
+        let max_length = 50;
+        let length = 1;
+        let x_pos_block = Array.new(50);
+        let y_pos_block = Array.new(50);
+
+
+        let x_pos_block[0] = start_x;
+        let y_pos_block[0] = start_y;
+
+        do draw();
+        return this;
+    }
+
+    method void dispose() {
+        do x_pos_block.dispose();
+        do y_pos_block.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    method int getHeadXBlock() {
+        return x_pos_block[0];
+    }
+
+    method int getHeadYBlock() {
+        return y_pos_block[0];
+    }
+
+    method void draw() {
+        var int i;
+        let i = 0;
+        do Screen.setColor(true);
+        while (i < length) {
+            do Screen.drawRectangle(x_pos_block[i] * 16, y_pos_block[i] * 16,
+                                  (x_pos_block[i] * 16) + 15, (y_pos_block[i] * 16) + 15);
+            let i = i + 1;
+        }
+        return;
+    }
+
+    method void move(int new_x_block, int new_y_block) {
+        var int i;
+
+        // Clear the tail
+        do Screen.setColor(false);
+        do Screen.drawRectangle(x_pos_block[length-1] * 16, y_pos_block[length-1] * 16,
+                              (x_pos_block[length-1] * 16) + 15,
+                              (y_pos_block[length-1] * 16) + 15);
+
+        // Move body segments
+        let i = length - 1;
+        while (i > 0) {
+            let x_pos_block[i] = x_pos_block[i-1];
+            let y_pos_block[i] = y_pos_block[i-1];
+            let i = i - 1;
+        }
+
+        // Move head to new position
+        let x_pos_block[0] = new_x_block;
+        let y_pos_block[0] = new_y_block;
+
+        // Draw new head position
+        do Screen.setColor(true);
+        do Screen.drawRectangle(new_x_block * 16, new_y_block * 16,
+                              (new_x_block * 16) + 15, (new_y_block * 16) + 15);
+        return;
+    }
+
+    /** Increases the length of the snake */
+    method void grow() {
+        if (length < max_length) {
+            let length = length + 1;
+            let x_pos_block[length-1] = x_pos_block[length-2];
+            let y_pos_block[length-1] = y_pos_block[length-2];
+        }
+        return;
+    }
+
+    /** Checks if a position collides with the snake's body */
+    method boolean checkCollision(int x, int y) {
+        var int i;
+        let i = 1;  // Start from 1 to ignore head position
+        while (i < length) {
+            if ((x = x_pos_block[i]) & (y = y_pos_block[i])) {
+                return true;
+            }
+            let i = i + 1;
+        }
+        return false;
+    }
+}

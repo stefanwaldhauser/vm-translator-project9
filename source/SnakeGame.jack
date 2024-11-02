@@ -1,0 +1,177 @@
+    /**
+    Screen is 512x256 pixels.
+    We divide it into 16x16 pixel blocks for easier coding of the food and snake!
+    This gives us a 32x16 grid
+
+    Coordinates in blocks have the suffix 'block'
+
+    Screen coordinate system in blocks:
+    Width: 32 blocks (0-31)
+    Height: 16 blocks (0-15)
+
+    (0,0)   (1,0)   (2,0)  ...  (30,0)  (31,0)
+    (0,1)   (1,1)   (2,1)  ...  (30,1)  (31,1)
+    (0,2)   (1,2)   (2,2)  ...  (30,2)  (31,2)
+    ...     ...     ...    ...  ...     ...
+    (0,14)  (1,14)  (2,14) ...  (30,14) (31,14)
+    (0,15)  (1,15)  (2,15) ...  (30,15) (31,15)
+
+       (0,0)       (31,0)
+        ┌─────────────┐
+        │             │
+        │             │
+        │             │
+        └─────────────┘
+        (0,15)     (31,15)
+
+
+     */
+
+
+class SnakeGame {
+    field Snake snake;
+    field int direction;         // current direction: 1=up, 2=right, 3=down, 4=left
+    field boolean exit;          // true when 'q' is pressed
+    field int food_x_block, food_y_block;    // food position in block coordinates
+    field int score;             // current score
+
+    constructor SnakeGame new() {
+        let snake = Snake.new(10, 10);  // Start snake at position (10,10) in block coordinates
+        let direction = 2;              // Start moving right
+        let exit = false;
+        let score = 0;
+
+        do Screen.clearScreen();
+        do drawBorder();
+        do drawScore();
+        do placeFood();
+
+        return this;
+    }
+
+    method void dispose() {
+        do snake.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    /*
+        Screen is 512 x 256 pixels
+
+        Width: 0 to 511 (512 pixels total)
+        Height: 0 to 255 (256 pixels total)
+
+        (0,0)       (511,0)
+        ┌─────────────┐
+        │             │
+        │             │
+        │             │
+        └─────────────┘
+        (0,255)     (511,255)
+    */
+    method void drawBorder() {
+        do Screen.setColor(true);
+        do Screen.drawRectangle(0, 0, 511, 0);        // Top Line
+        do Screen.drawRectangle(0, 255, 511, 255);    // Bottom Bottom Line
+        do Screen.drawRectangle(0, 0, 0, 255);        // Left Line
+        do Screen.drawRectangle(511, 0, 511, 255);    // Right Line
+        return;
+    }
+
+    method void drawScore() {
+        do Output.moveCursor(0, 0); // Top Left
+        do Output.printString("Score: ");
+        do Output.printInt(score);
+        return;
+    }
+
+    method void placeFood() {
+        let food_x_block = Random.randRange(29) + 1;    // Somewhere between 1 and 30 (avoid borders at 0 and 31)
+        let food_y_block = Random.randRange(13) + 1;    // Somewhere between 1 and 14 (avoid borders at 0 and 15)
+        do Screen.setColor(true);
+
+
+        do Screen.drawRectangle(food_x_block * 16,      food_y_block * 16,
+                          (food_x_block * 16) + 15, (food_y_block * 16) + 15);
+        return;
+    }
+
+    method void moveSnake() {
+        var int next_x_block, next_y_block;
+        let next_x_block = snake.getHeadXBlock();
+        let next_y_block = snake.getHeadYBlock();
+
+        if (direction = 1) { let next_y_block = next_y_block - 1; }     // Up
+        if (direction = 2) { let next_x_block = next_x_block + 1; }     // Right
+        if (direction = 3) { let next_y_block = next_y_block + 1; }     // Down
+        if (direction = 4) { let next_x_block = next_x_block - 1; }     // Left
+
+        // Check for collisions with walls
+        if ((next_x_block < 1) | (next_x_block > 30) |
+            (next_y_block < 1) | (next_y_block > 14)) {
+            let exit = true;
+            return;
+        }
+
+        // Check for collision with self
+        if (snake.checkCollision(next_x_block, next_y_block)) {
+            let exit = true;
+            return;
+        }
+
+        do snake.move(next_x_block, next_y_block);
+        return;
+    }
+
+    method void checkCollisionWithFood() {
+        if ((snake.getHeadXBlock() = food_x_block) & (snake.getHeadYBlock() = food_y_block)) {
+            let score = score + 1;       // Increment score
+            do snake.grow();             // Make snake longer
+            do drawScore();              // Update score display
+            do placeFood();              // Place new food
+        }
+        return;
+    }
+
+    method void run() {
+        var char key;
+        var int current_direction;
+
+        while (~exit) {
+            // Store current direction to prevent 180-degree turns
+            let current_direction = direction;
+
+            // Handle keyboard input
+            let key = Keyboard.keyPressed();
+
+            if (key = 81) { let exit = true; }     // q key
+
+            // Only allow valid direction changes (no 180-degree turns)
+            if (key = 131) {  // up arrow
+                if (~(current_direction = 3)) { let direction = 1; }
+            }
+            if (key = 132) {  // right arrow
+                if (~(current_direction = 4)) { let direction = 2; }
+            }
+            if (key = 133) {  // down arrow
+                if (~(current_direction = 1)) { let direction = 3; }
+            }
+            if (key = 130) {  // left arrow
+                if (~(current_direction = 2)) { let direction = 4; }
+            }
+
+            do moveSnake();
+            do checkCollisionWithFood();
+            do Sys.wait(100);
+        }
+
+        // Game over - display final score
+        do Output.moveCursor(10, 27);
+        do Output.printString("Game Over!");
+        do Output.moveCursor(12, 27);
+        do Output.printString("Final Score: ");
+        do Output.printInt(score);
+
+        return;
+    }
+}
